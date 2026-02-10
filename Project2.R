@@ -129,4 +129,29 @@ overallresults <- overallresults %>%
 #I view the overall results with the rate of change calculation
 head(overallresults,5)
 
-#any rate of change that is negative showsa decline growth, positive show increase in growth, 0 indicates steady growth
+overall_results_longer <- overallresults %>%
+  pivot_longer(
+    cols = c(P1,P2,P3),
+    names_to = "Period",
+    values_to = "Score"
+  ) %>%
+  mutate(
+    Period = factor(Period, levels = c("P1","P2", "P3"))
+  )
+
+#I bring in ggplot library
+library(ggplot2)
+
+#we plot it onto a line chart indicating trajectory for each child
+ggplot(overall_results_longer, aes(x = Period, y = Score, group = CPID )) +
+  geom_line(alpha = .4, color = "black")+
+  geom_point(size = 2) +
+  theme_minimal() +
+  labs(
+    title = "2023 HELP Assessment Data",
+    x = "Assessment Period",
+    y = "Scores") +
+  theme(plot.title = element_text(hjust = .5))
+
+
+#any rate of change that is negative shows a decline growth, positive show increase in growth, 0 indicates steady growth
