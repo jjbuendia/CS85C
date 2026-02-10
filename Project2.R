@@ -1,0 +1,118 @@
+library('tidyverse')
+
+getwd()
+
+setwd('C:/Users/jbuendia/Documents/Learning/CS85/Project')
+
+dir()
+
+df <- read_csv("DataFrame.csv")
+
+View(df)
+
+#I renamed the columns
+df <- df %>%
+  rename(CPID = `Child ID`,Dom_Reg_Sen = `0.0 - Regulatory / Sensory Org.`, Dom_Cog = `1.0 - Cognitive`, Dom_Lan_Rec =`2.0I - Receptive`,Dom_Lan_Exp = `2.0II - Expressive`,Dom_Gros = `3.0 - Gross Motor`, Dom_FM =`4.0 - Fine Motor`, Dom_Soc =`5.0 - Social - Emotional`, Dom_Self = `6.0 - Self-Help`)
+
+df_clean <- df %>% 
+  filter(!is.na(CPID))
+
+View(df_clean)
+
+#I mutate the columns into their data types for analysis and drop the redundnat ones
+df_clean <- df_clean %>% 
+  mutate(
+    CPID = as.character(CPID),
+    Assessment_Period = factor(Assessment_Period),
+    Site = factor(Site),
+    Caseload = factor(Caseload),
+    Gen = factor (Gen), 
+    Zip = as.character(Zip),
+    Dual = factor(Dual),
+   Year = as.integer(Year)
+  ) %>%
+  select(
+    -Gen, -Dual
+  )
+
+View(df_clean)
+
+
+glimpse(df_clean)
+
+summary(df_clean)
+
+#I will see counts of assessments for children
+
+help_counts <- df_clean %>%
+  count(CPID, name = "count_assessments")
+
+View(help_counts)
+
+
+filtered_children <- df_clean %>%
+  inner_join(help_counts %>% filter(count_assessments == 3),
+             by = "CPID")
+
+View(filtered_children)
+
+
+length(unique(filtered_children$CPID))
+
+#I discrentalize the help categories
+categories_rating <- c(
+  "increased rate of development significantly but continues within less than age expected range" = 1,
+  "continued or decreased  rate of developent within less than age expected range" = 1,
+  "increased rate of development to age expected range" = 2,
+  "maintained or increased rate of development within greater than age expected range" = 2,
+  "maintained or increased rate of development within age expected range" = 3,
+  "increased rate of development to greater than age expected range" = 3
+)
+#i get the average from each child and add a row
+df_scored <- filtered_children %>%
+  mutate(across(starts_with("Dom_"),~ as.numeric(categories_rating[.]))) %>%
+  mutate(avg_1 = rowMeans(select(., starts_with("Dom_")), na.rm = TRUE))
+
+#I rename the column
+df_scored <- df_scored %>%
+  rename(ave_scores = avg_1)
+
+#i check the column names
+colnames(df_scored)
+
+#
+df_wide <- df_scored %>%
+  select(CPID, Assessment_Period, ave_scores) %>%
+  pivot_wider(
+    names_from = Assessment_Period, 
+    values_from = ave_scores,
+    names_prefix = "P"
+  )
+
+View(df_wide)
+
+growth_1 <- df_wide %>%
+  mutate(result1 = P2-P1)
+
+View(growth_1)
+
+overallresults <- df_wide %>%
+  mutate(
+    Growth_P1_P2 = P2 - P1,
+    Growth_P2_P3 = P3 - P2,
+    Growth_P1_P3 = P3 - P1
+  )
+
+View(overallresults)
+
+overallresults <- overallresults %>%
+  select(-Growth_P1_P3)
+
+View(overallresults)
+
+overallresults <- overallresults %>%
+  mutate(
+    rate_of_change = Growth_P2_P3 - Growth_P1_P2
+  )
+
+view(overallresults)
